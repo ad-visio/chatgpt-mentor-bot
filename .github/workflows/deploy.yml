@@ -1,0 +1,37 @@
+name: Deploy to VPS
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+      - uses: appleboy/ssh-action@v0.1.11
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            if [ ! -d ".git" ]; then
+              git init
+              git remote add origin git@github.com:${{ github.repository }}.git
+              git fetch origin main || true
+              git checkout -B main || true
+            fi
+            git fetch --all || true
+            git reset --hard origin/main
+            if [ ! -d "venv" ]; then python3 -m venv venv; fi
+            ./venv/bin/pip install --upgrade pip
+            if [ -f requirements.txt ]; then ./venv/bin/pip install -r requirements.txt; fi
+            ./venv/bin/python -m py_compile bot.py || { echo "Syntax error"; exit 1; }
+            sudo /usr/bin/systemctl restart mentor-bot
+            sudo /usr/bin/journalctl -u mentor-bot -n 30 --no-pager
