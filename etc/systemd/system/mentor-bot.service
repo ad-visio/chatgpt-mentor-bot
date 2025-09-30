@@ -1,0 +1,15 @@
+[Unit]
+Description=ChatGPT Mentor Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/chatgpt_mentor
+Environment=BOT_TOKEN=__REPLACE_WITH_TOKEN__
+ExecStart=/opt/chatgpt_mentor/venv/bin/python /opt/chatgpt_mentor/bot.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
